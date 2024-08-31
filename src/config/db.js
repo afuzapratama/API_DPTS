@@ -2,13 +2,21 @@ const mongoose = require('mongoose');
 const Redis = require('ioredis');
 require('dotenv').config();
 
-const mongodbURI = `${process.env.MONGO_URI}/${process.env.MONGO_DATABASE}`;
+const MONGO_URI = process.env.MONGO_URI;
+const MONGO_DATABASE = process.env.MONGO_DATABASE;
 
 // Koneksi ke MongoDB
 const connectDB = async () => {
   try {
-    await mongoose.connect(mongodbURI);
+
+      const mongooseOptions = {
+        dbName: MONGO_DATABASE // Memastikan bahwa database yang tepat digunakan
+      };
+
+    await mongoose.connect(MONGO_URI, mongooseOptions);
     console.log('MongoDB connected');
+
+
   } catch (error) {
     console.error('MongoDB connection error:', error);
   }
