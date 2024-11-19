@@ -37,7 +37,7 @@ router.post('/find', async (req, res) => {
     const cachedData = await redisClient.get(JSON.stringify(searchQuery));
 
     if (cachedData) {
-      // console.log('Cache hit:', cachedData); 
+      console.log('Cache hit:', cachedData); // Log cache
       return res.json({
         status: true,
         source: 'cache',
@@ -46,21 +46,21 @@ router.post('/find', async (req, res) => {
     }
 
     // Pencarian pertama (dengan spasi)
-    // console.log('Mencoba query pertama:', firstQuery);
+    console.log('Mencoba query pertama:', firstQuery);
     let data = await DataModel.findOne(firstQuery)
       .lean()
       .select('kecamatan desa tps nama gender usia alamat rt rw');
 
     if (!data) {
       // Jika tidak ditemukan, lakukan pencarian kedua (tanpa spasi untuk desa)
-      // console.log('Query pertama gagal, mencoba query kedua:', secondQuery);
+      console.log('Query pertama gagal, mencoba query kedua:', secondQuery);
       data = await DataModel.findOne(secondQuery)
         .lean()
         .select('kecamatan desa tps nama gender usia alamat rt rw');
     }
 
     if (!data) {
-      // console.log('Query kedua juga gagal');
+      console.log('Query kedua juga gagal');
       return res.json({
         status: false,
         source: 'database',
@@ -69,7 +69,7 @@ router.post('/find', async (req, res) => {
     }
 
     // Simpan hasil ke cache
-    // console.log('Data ditemukan, menyimpan ke cache:', data);
+    console.log('Data ditemukan, menyimpan ke cache:', data);
     redisClient.set(JSON.stringify(searchQuery), JSON.stringify(data), 'EX', 3600);
 
     res.json({
