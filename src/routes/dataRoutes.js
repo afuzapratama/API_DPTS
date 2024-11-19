@@ -4,38 +4,34 @@ const DataModel = require('../models/dataModel');
 const { redisClient } = require('../config/db');
 
 router.post('/find', async (req, res) => {
-  
   const searchQuery = req.body;
 
-  if (!searchQuery || Object.keys(searchQuery).length === 0) {
-    return res.status(400).json({
-      status: false,
-      message: 'Bad request: request body tidak boleh kosong'
-    });
-  }
+  const normalizeText = (text) => text.replace(/\s+/g, '').toUpperCase();
 
-  const cacheKey = JSON.stringify(searchQuery);
+  const regexQuery = {
+    kecamatan: { $regex: new RegExp(normalizeText(searchQuery.kecamatan), 'i') },
+    desa: { $regex: new RegExp(normalizeText(searchQuery.desa), 'i') },
+    'PENDUDUK.NAMA': { $regex: new RegExp(normalizeText(searchQuery.nama), 'i') },
+    rt: searchQuery.rt,
+    rw: searchQuery.rw,
+  };
 
   try {
-    const cachedData = await redisClient.get(cacheKey);
+    const cachedData = await redisClient.get(JSON.stringify(searchQuery));
 
     if (cachedData) {
-      const parsedData = JSON.parse(cachedData);
-      if (parsedData && Object.keys(parsedData).length !== 0) {
-        return res.json({ 
-          status: true, 
-          source: 'cache', 
-          data: parsedData 
-        });
-      }
+      return res.json({ 
+        status: true, 
+        source: 'cache', 
+        data: JSON.parse(cachedData) 
+      });
     }
 
-    const data = await DataModel.findOne(searchQuery)
+    const data = await DataModel.findOne(regexQuery)
       .lean()
       .select('kecamatan desa tps nama gender usia alamat rt rw');
 
     if (!data) {
-      // Avoid saving empty data to the cache
       return res.json({ 
         status: false, 
         source: 'database', 
@@ -43,15 +39,16 @@ router.post('/find', async (req, res) => {
       });
     }
 
-    redisClient.set(cacheKey, JSON.stringify(data), 'EX', 3600);
+    redisClient.set(JSON.stringify(searchQuery), JSON.stringify(data), 'EX', 3600);
+
     res.json({ 
-      status: true,
+      status: true, 
       source: 'database', 
       data 
     });
   } catch (error) {
     res.status(500).json({ 
-      status: false,
+      status: false, 
       message: error.message 
     });
   }
